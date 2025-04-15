@@ -5,6 +5,22 @@ import os
 import joblib
 from sklearn.preprocessing import MinMaxScaler
 
+import gdown
+import os
+
+# Function to download CSV from Google Drive
+def download_csv_from_drive(file_id, destination_path="train_data.csv"):
+    if not os.path.exists(destination_path):
+        url = f"https://drive.google.com/uc?id={file_id}"
+        gdown.download(url, destination_path, quiet=False)
+
+# Download CSV
+download_csv_from_drive("1JjATBsMg1_vsM0pjPoo95p-vElIl_yqz")
+
+from new_code_a import load_data, process_data, create_features, predict_sales
+from new_code_a import stacked_model, scaler, features
+
+
 # Load Model
 @st.cache_resource
 def load_model():
