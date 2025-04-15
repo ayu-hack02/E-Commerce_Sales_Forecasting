@@ -10,6 +10,19 @@ Original file is located at
 #!pip install --upgrade --force-reinstall numpy pandas matplotlib seaborn catboost
 
 
+import gdown
+import os
+
+# Function to download CSV from Google Drive
+def download_csv_from_drive(file_id, destination_path="train_data.csv"):
+    if not os.path.exists(destination_path):
+        url = f"https://drive.google.com/uc?id={file_id}"
+        gdown.download(url, destination_path, quiet=False)
+
+# Download CSV
+download_csv_from_drive("1JjATBsMg1_vsM0pjPoo95p-vElIl_yqz")
+
+
 
 import pandas as pd
 import numpy as np
