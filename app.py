@@ -8,20 +8,13 @@ from sklearn.preprocessing import MinMaxScaler
 # Load Model
 @st.cache_resource
 def load_model():
-    model_script = "new_code_a.py"
-    
-    if not os.path.exists(model_script):
-        st.error(f"Model script '{model_script}' not found!")
+    try:
+        scaler = joblib.load("scaler.pkl")
+        model = joblib.load("stacked_model.pkl")
+        return scaler, model
+    except Exception as e:
+        st.error(f"Error loading model or scaler: {e}")
         return None, None
-    
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("model_module", model_script)
-    model_module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(model_module)
-
-    return model_module.scaler, model_module.stacked_model
-
-scaler, model = load_model()
 
 # Streamlit UI
 st.title("📈 E-Commerce Sales Forecasting Web App")
