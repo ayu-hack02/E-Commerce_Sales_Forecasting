@@ -40,6 +40,11 @@ def process_data(data):
     daily_sales['week'] = pd.to_datetime(daily_sales['date']).dt.to_period('W')
     weekly_sales = daily_sales.groupby(['week', 'StockCode']).agg({'sales': 'sum'}).reset_index()
     weekly_sales['week'] = weekly_sales['week'].apply(lambda x: x.start_time)
+
+    # Add rolling standard deviation
+    weekly_sales['rolling_std_2'] = weekly_sales.groupby('StockCode')['sales'].transform(lambda x: x.rolling(2, min_periods=1).std())
+    weekly_sales['rolling_std_2'].fillna(0, inplace=True)  # Handle NaN values
+
     return weekly_sales
 
 # ✅ Feature Engineering
@@ -54,7 +59,8 @@ def create_features(data):
     data['lag_1'] = data.groupby('StockCode')['sales'].shift(1)
     data['rolling_mean_2'] = data.groupby('StockCode')['sales'].transform(lambda x: x.rolling(2, min_periods=1).mean())
 
-    data.fillna(method='bfill', inplace=True)
+    # Fill missing values
+    data.bfill(inplace=True)
     return data
 
 # ✅ Load & Process Data
@@ -62,15 +68,27 @@ train_data = load_data('train_data.csv')
 weekly_sales = process_data(train_data)
 weekly_sales = create_features(weekly_sales)
 
-# ✅ Feature Selection
-features = ['year', 'month', 'weekofyear', 'dayofweek', 'is_weekend', 'lag_1', 'rolling_mean_2']
+# ✅ Feature Selection (Include rolling_std_2)
+features = ['year', 'month', 'weekofyear', 'dayofweek', 'is_weekend', 'lag_1', 'rolling_mean_2', 'rolling_std_2']
 scaler = MinMaxScaler()
 weekly_sales[features] = scaler.fit_transform(weekly_sales[features])
+
 
 # ✅ Train-Test Split
 train_size = int(len(weekly_sales) * 0.8)
 train, test = weekly_sales.iloc[:train_size], weekly_sales.iloc[train_size:]
-X_train, X_test, y_train, y_test = train[features], test[features], train['sales'], test['sales']
+X_train, X_test = train[features], test[features]
+
+# ✅ Sanitize sales values before log1p
+train['sales'] = train['sales'].clip(lower=0)       # Set negatives to 0
+test['sales'] = test['sales'].clip(lower=0)
+train['sales'].fillna(0, inplace=True)               # Fill NaNs
+test['sales'].fillna(0, inplace=True)
+
+# ✅ Log-transform target variable
+y_train = np.log1p(train['sales'])
+y_test = np.log1p(test['sales'])
+
 
 # ✅ Train Models
 lgbm = LGBMRegressor(n_estimators=300, learning_rate=0.1, subsample=0.8, random_state=42)
@@ -90,6 +108,10 @@ stacked_model.fit(X_train, y_train)
 
 # ✅ Make Predictions
 stacked_preds = stacked_model.predict(X_test)
+
+# ✅ Inverse log to get actual predictions
+stacked_preds = np.expm1(stacked_model.predict(X_test))
+y_test = np.expm1(y_test)
 
 # ✅ Evaluation
 mae = mean_absolute_error(y_test, stacked_preds)
