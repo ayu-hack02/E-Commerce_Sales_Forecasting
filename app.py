@@ -59,6 +59,9 @@ if uploaded_file:
                 df = df.sort_values(by=["StockCode", "week"])
                 df["lag_1"] = df.groupby("StockCode")["Quantity"].shift(1)
                 df["rolling_mean_2"] = df.groupby("StockCode")["Quantity"].transform(lambda x: x.rolling(2, min_periods=1).mean())
+                df["rolling_std_2"] = df.groupby("StockCode")["Quantity"].transform(lambda x: x.rolling(2, min_periods=1).std())
+                df["rolling_std_2"].fillna(df["rolling_std_2"].median(), inplace=True)
+
                 df.fillna(method="bfill", inplace=True)
 
                 future_df["year"] = future_df["week"].dt.year
@@ -76,7 +79,13 @@ if uploaded_file:
                 future_df = future_df.merge(rolling_means, on="StockCode", how="left")
                 future_df["rolling_mean_2"].fillna(df["rolling_mean_2"].median(), inplace=True)
 
-                features = ["year", "month", "weekofyear", "dayofweek", "is_weekend", "lag_1", "rolling_mean_2"]
+                rolling_stds = df.groupby("StockCode")["rolling_std_2"].last().reset_index()
+                future_df = future_df.merge(rolling_stds, on="StockCode", how="left")
+                future_df["rolling_std_2"].fillna(df["rolling_std_2"].median(), inplace=True)
+
+                
+                features = ["year", "month", "weekofyear", "dayofweek", "is_weekend", "lag_1", "rolling_mean_2", "rolling_std_2"]
+
                 future_df[features] = scaler.transform(future_df[features])
 
                 future_df["Predicted Sales"] = model.predict(future_df[features])
