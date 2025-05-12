@@ -23,6 +23,8 @@ st.write("Upload your sales data in CSV format and get sales predictions for the
 
 uploaded_file = st.file_uploader("📂 Upload your CSV file", type=["csv"])
 
+st.write("Tip: Make sure the file has columns in the same order as - 'InvoiceNo, StockCode, Description, Quantity, InvoiceDate, UnitPrice, CustomerID, Country'.")
+
 if uploaded_file:
     df = pd.read_csv(uploaded_file, encoding="ISO-8859-1")
     st.write("📌 Uploaded Data Preview:")
